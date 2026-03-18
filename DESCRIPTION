@@ -1,0 +1,28 @@
+Package: freestatemoney
+Type: Package
+Title: Load and Parse Maryland Campaign Finance Data
+Version: 0.1.0
+Authors@R: c(
+    person("NewsAppsUMD", role = c("aut", "cre"),
+           email = "example@umd.edu")
+    )
+Description: Provides functions to download, parse, and analyze campaign
+    finance data from the Maryland State Board of Elections. Returns tidy
+    data frames for committees, contributions/loans, and expenditures.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.1
+Imports:
+    readr (>= 2.0.0),
+    dplyr (>= 1.0.0),
+    tibble (>= 3.0.0),
+    httr (>= 1.4.0),
+    lubridate (>= 1.7.0),
+    janitor (>= 2.0.0)
+Suggests:
+    testthat (>= 3.0.0),
+    withr
+Config/testthat/edition: 3
+URL: https://github.com/NewsAppsUMD/freestatemoney
+BugReports: https://github.com/NewsAppsUMD/freestatemoney/issues

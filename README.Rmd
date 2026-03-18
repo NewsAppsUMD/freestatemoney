@@ -1,0 +1,184 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# freestatemoney
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+`freestatemoney` is an R package for loading and parsing campaign finance data from Maryland. It provides simple functions to work with data from the Maryland State Board of Elections, returning tidy data frames ready for analysis.
+
+## Installation
+
+You can install the development version of freestatemoney from [GitHub](https://github.com/) with:
+
+``` r
+# install.packages("devtools")
+devtools::install_github("NewsAppsUMD/freestatemoney")
+```
+
+## Getting Data
+
+**Important**: This package works with CSV files that you download manually from the Maryland State Board of Elections. The downloads are triggered by JavaScript and cannot be automated.
+
+1. Visit https://campaignfinance.maryland.gov/public/cf/downloads
+2. Select the data type (Committees, Contributions, or Expenditures)
+3. Select the time period (current year/cycle or previous year)
+4. Click download and save the CSV file
+
+See [DOWNLOAD_INSTRUCTIONS.md](DOWNLOAD_INSTRUCTIONS.md) for detailed steps.
+
+## Data Sources
+
+All data comes from the Maryland State Board of Elections Campaign Reporting Information System (CRIS):
+https://campaignfinance.maryland.gov/public/cf/downloads
+
+The package provides access to three main datasets:
+
+1. **Committees**: Registration and metadata for all campaign finance committees
+2. **Contributions and Loans**: Individual contribution and loan transactions
+3. **Expenditures**: Spending transactions including expenditures, outstanding obligations, and independent expenditures
+
+## Usage
+
+### Load Committee Data
+
+```{r example-committees, eval=FALSE}
+library(freestatemoney)
+
+# Load committee registration data from downloaded file
+committees <- md_committees("~/Downloads/Committee_2024.csv")
+
+# View structure
+head(committees)
+```
+
+### Load Contribution Data
+
+```{r example-contributions, eval=FALSE}
+library(freestatemoney)
+library(dplyr)
+
+# Load contributions from downloaded file
+contributions <- md_contributions("~/Downloads/Contributions_2024.csv")
+
+# Find large contributions
+large_contributions <- contributions %>%
+  filter(transaction_amount >= 500) %>%
+  arrange(desc(transaction_amount))
+```
+
+### Load Expenditure Data
+
+```{r example-expenditures, eval=FALSE}
+library(freestatemoney)
+library(dplyr)
+
+# Load expenditures from downloaded file
+expenditures <- md_expenditures("~/Downloads/Expenditures_2024.csv")
+
+# Summarize spending by category
+spending_summary <- expenditures %>%
+  group_by(category) %>%
+  summarize(
+    total_amount = sum(transaction_amount, na.rm = TRUE),
+    transaction_count = n()
+  ) %>%
+  arrange(desc(total_amount))
+
+# Filter for Independent Expenditures
+independent_expenditures <- expenditures %>%
+  filter(transaction_type == "Independent Expenditure")
+```
+
+### Combining Datasets
+
+```{r example-join, eval=FALSE}
+library(freestatemoney)
+library(dplyr)
+
+# Load data from downloaded files
+committees <- md_committees("~/Downloads/Committee_2024.csv")
+contributions <- md_contributions("~/Downloads/Contributions_2024.csv")
+
+# Join to add committee details to contributions
+contributions_with_details <- contributions %>%
+  left_join(
+    committees %>% select(filing_entity_id, committee_type, election),
+    by = "filing_entity_id"
+  )
+
+# Analyze contributions by committee type
+by_committee_type <- contributions_with_details %>%
+  group_by(committee_type) %>%
+  summarize(
+    total_raised = sum(transaction_amount, na.rm = TRUE),
+    avg_contribution = mean(transaction_amount, na.rm = TRUE),
+    num_contributions = n()
+  )
+```
+
+## Key Features
+
+- **Tidy Data**: All functions return tibbles with clean column names
+- **Type Safety**: Dates are parsed as Date objects, amounts as numeric
+- **Local Files**: Works with CSV files you download from Maryland SBE
+- **Well Documented**: Comprehensive roxygen2 documentation
+- **Tested**: Includes testthat test suite
+
+## Column Naming
+
+By default, all functions convert column names to snake_case (e.g., `filing_entity_id`, `transaction_amount`). You can disable this by setting `clean_names = FALSE`:
+
+```{r clean-names, eval=FALSE}
+# With clean names (default)
+committees <- md_committees("path/to/file.csv", clean_names = TRUE)
+
+# With original column names
+committees_raw <- md_committees("path/to/file.csv", clean_names = FALSE)
+```
+
+## Development
+
+To set up for development:
+
+```r
+# Install development dependencies
+install.packages(c("devtools", "roxygen2", "testthat"))
+
+# Load package for development
+devtools::load_all()
+
+# Generate documentation
+devtools::document()
+
+# Run tests
+devtools::test()
+
+# Check package
+devtools::check()
+```
+
+## License
+
+MIT License - Copyright (c) 2026 NewsAppsUMD
+
+## Data Notes
+
+- **Filing Entity ID** is the unique identifier that links all three datasets
+- Some fields may be nullable/NA depending on the transaction or committee type
+- Lump sum contributions have blank contributor details
+- Independent Expenditure transactions have additional fields for candidate/ballot issue information
+- Date format in source files is MM/DD/YYYY
