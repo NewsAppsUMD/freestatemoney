@@ -112,17 +112,14 @@ shipped with the package:</p>
 <span><span class="op">}</span></span>
 <span></span>
 <span><span class="va">con</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/md_db.html">md_db</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".duckdb"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="co">#&gt; duckdb: caching downloaded extensions in the package library:</span></span>
-<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> /home/runner/work/_temp/Library/duckdb/extensions</span></span>
-<span><span class="co">#&gt; <span style="color: #0000BB;">ℹ</span> This is removed when the package is re-installed; see `?duckdb_storage` to choose a different location.</span></span>
 <span><span class="fu"><a href="../reference/md_db_load.html">md_db_load</a></span><span class="op">(</span><span class="va">con</span>, <span class="st">"committees"</span>, file <span class="op">=</span> <span class="fu">sample_file</span><span class="op">(</span><span class="st">"committees_sample.csv"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/md_db_load.html">md_db_load</a></span><span class="op">(</span><span class="va">con</span>, <span class="st">"contributions"</span>, file <span class="op">=</span> <span class="fu">sample_file</span><span class="op">(</span><span class="st">"contributions_sample.csv"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/md_db_tables.html">md_db_tables</a></span><span class="op">(</span><span class="va">con</span><span class="op">)</span></span>
 <span><span class="co">#&gt; <span style="color: #949494;"># A tibble: 2 × 5</span></span></span>
 <span><span class="co">#&gt;   dataset       filing_year n_rows download_date       ingested_at        </span></span>
 <span><span class="co">#&gt;   <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>         <span style="color: #949494; font-style: italic;">&lt;chr&gt;</span>        <span style="color: #949494; font-style: italic;">&lt;dbl&gt;</span> <span style="color: #949494; font-style: italic;">&lt;dttm&gt;</span>              <span style="color: #949494; font-style: italic;">&lt;dttm&gt;</span>             </span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> committees    current          8 2026-06-14 <span style="color: #949494;">01:00:00</span> 2026-07-10 <span style="color: #949494;">11:14:56</span></span></span>
-<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> contributions current          8 2026-07-06 <span style="color: #949494;">01:00:00</span> 2026-07-10 <span style="color: #949494;">11:14:56</span></span></span></code></pre></div>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">1</span> committees    current          8 2026-06-14 <span style="color: #949494;">01:00:00</span> 2026-07-10 <span style="color: #949494;">12:05:50</span></span></span>
+<span><span class="co">#&gt; <span style="color: #BCBCBC;">2</span> contributions current          8 2026-07-06 <span style="color: #949494;">01:00:00</span> 2026-07-10 <span style="color: #949494;">12:05:50</span></span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="querying-with-dplyr">Querying with dplyr<a class="anchor" aria-label="anchor" href="#querying-with-dplyr"></a>

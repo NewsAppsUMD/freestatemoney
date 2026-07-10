@@ -62,17 +62,14 @@ sample_file <- function(name) {
 }
 
 con <- md_db(tempfile(fileext = ".duckdb"))
-#> duckdb: caching downloaded extensions in the package library:
-#> ℹ /home/runner/work/_temp/Library/duckdb/extensions
-#> ℹ This is removed when the package is re-installed; see `?duckdb_storage` to choose a different location.
 md_db_load(con, "committees", file = sample_file("committees_sample.csv"))
 md_db_load(con, "contributions", file = sample_file("contributions_sample.csv"))
 md_db_tables(con)
 #> # A tibble: 2 × 5
 #>   dataset       filing_year n_rows download_date       ingested_at        
 #>   <chr>         <chr>        <dbl> <dttm>              <dttm>             
-#> 1 committees    current          8 2026-06-14 01:00:00 2026-07-10 11:14:56
-#> 2 contributions current          8 2026-07-06 01:00:00 2026-07-10 11:14:56
+#> 1 committees    current          8 2026-06-14 01:00:00 2026-07-10 12:05:50
+#> 2 contributions current          8 2026-07-06 01:00:00 2026-07-10 12:05:50
 ```
 
 ## Querying with dplyr
