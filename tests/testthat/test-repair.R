@@ -52,7 +52,7 @@ test_that("quoted CRLF line breaks are left alone", {
     fixed = TRUE
   )
   path <- withr::local_tempfile(fileext = ".csv")
-  writeLines(c(clean[1:2], quoted_row), path, sep = "\r\n")
+  write_crlf_lines(c(clean[1:2], quoted_row), path)
 
   expect_no_message(result <- md_contributions(path))
   expect_equal(nrow(result), 1)

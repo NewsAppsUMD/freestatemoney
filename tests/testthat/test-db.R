@@ -85,7 +85,7 @@ test_that("md_db_load truncates over-long CRIS records like the loaders do", {
   lines <- readLines(fixture("contributions_sample.csv"))
   lines[length(lines)] <- paste0(lines[length(lines)], ",stray overflow,text")
   path <- withr::local_tempfile(fileext = ".csv")
-  writeLines(lines, path, sep = "\r\n")
+  write_crlf_lines(lines, path)
 
   con <- local_md_db()
   md_db_load(con, "contributions", file = path)
