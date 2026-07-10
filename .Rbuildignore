@@ -8,3 +8,5 @@
 ^pkgdown$
 ^\.claude$
 ^CLAUDE\.md$
+^QUICKSTART\.md$
+^DOWNLOAD_INSTRUCTIONS\.md$

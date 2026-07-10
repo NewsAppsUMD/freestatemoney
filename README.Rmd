@@ -16,9 +16,10 @@ knitr::opts_chunk$set(
 # freestatemoney
 
 <!-- badges: start -->
+[![R-CMD-check](https://github.com/NewsAppsUMD/freestatemoney/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/NewsAppsUMD/freestatemoney/actions/workflows/R-CMD-check.yaml)
 <!-- badges: end -->
 
-`freestatemoney` is an R package for loading and parsing campaign finance data from Maryland. It provides simple functions to work with data from the Maryland State Board of Elections, returning tidy data frames ready for analysis.
+`freestatemoney` is an R package for downloading, loading, and parsing campaign finance data from Maryland. It works with data from the Maryland State Board of Elections Campaign Reporting Information System (CRIS), returning tidy data frames ready for analysis.
 
 ## Installation
 
@@ -31,14 +32,28 @@ devtools::install_github("NewsAppsUMD/freestatemoney")
 
 ## Getting Data
 
-**Important**: This package works with CSV files that you download manually from the Maryland State Board of Elections. The downloads are triggered by JavaScript and cannot be automated.
+`md_download()` fetches bulk data directly from the SBE's CRIS API — the same data the download page at https://campaignfinance.maryland.gov/public/cf/downloads serves:
 
-1. Visit https://campaignfinance.maryland.gov/public/cf/downloads
-2. Select the data type (Committees, Contributions, or Expenditures)
-3. Select the time period (current year/cycle or previous year)
-4. Click download and save the CSV file
+```{r example-download, eval=FALSE}
+library(freestatemoney)
 
-See [DOWNLOAD_INSTRUCTIONS.md](DOWNLOAD_INSTRUCTIONS.md) for detailed steps.
+# Current-cycle committee list
+committees <- md_committees(md_download("committees"))
+
+# Contributions for a single filing year (full-cycle files can be very large)
+contributions <- md_contributions(md_download("contributions", year = 2025))
+
+# Expenditures for a single filing year
+expenditures <- md_expenditures(md_download("expenditures", year = 2025))
+```
+
+Or grab everything at once:
+
+```{r example-load-all, eval=FALSE}
+md <- md_load_all(year = 2025)
+```
+
+You can also download CSV files manually from the SBE website and pass their paths to the loader functions. See [DOWNLOAD_INSTRUCTIONS.md](DOWNLOAD_INSTRUCTIONS.md) for details.
 
 ## Data Sources
 
@@ -58,8 +73,8 @@ The package provides access to three main datasets:
 ```{r example-committees, eval=FALSE}
 library(freestatemoney)
 
-# Load committee registration data from downloaded file
-committees <- md_committees("~/Downloads/Committee_2024.csv")
+# Load committee registration data from a downloaded file
+committees <- md_committees("CommitteeList.csv")
 
 # View structure
 head(committees)
@@ -71,8 +86,8 @@ head(committees)
 library(freestatemoney)
 library(dplyr)
 
-# Load contributions from downloaded file
-contributions <- md_contributions("~/Downloads/Contributions_2024.csv")
+# Load contributions from a downloaded file
+contributions <- md_contributions("ContributionsList.csv")
 
 # Find large contributions
 large_contributions <- contributions %>%
@@ -86,8 +101,8 @@ large_contributions <- contributions %>%
 library(freestatemoney)
 library(dplyr)
 
-# Load expenditures from downloaded file
-expenditures <- md_expenditures("~/Downloads/Expenditures_2024.csv")
+# Load expenditures from a downloaded file
+expenditures <- md_expenditures("ExpendituresList.csv")
 
 # Summarize spending by category
 spending_summary <- expenditures %>%
@@ -103,20 +118,52 @@ independent_expenditures <- expenditures %>%
   filter(transaction_type == "Independent Expenditure")
 ```
 
+### Built-in Analysis Helpers
+
+```{r example-helpers, eval=FALSE}
+md <- md_load_all(year = 2025)
+
+# Fundraising and spending totals per committee
+md_committee_summary(md$committees, md$contributions, md$expenditures)
+
+# Largest donors
+md_top_contributors(md$contributions, n = 25)
+
+# Independent expenditure / electioneering communication spending
+md_independent_expenditures(md$expenditures)
+```
+
+### Working with Large Files
+
+Full-cycle transaction files run to hundreds of megabytes. The `md_db()` family (requires the suggested duckdb and DBI packages) ingests bulk data into a persistent DuckDB database once, then queries it lazily — only results come into R:
+
+```{r example-duckdb, eval=FALSE}
+con <- md_db("maryland.duckdb")
+md_db_load(con, "contributions", year = 2024)
+md_db_load(con, "contributions", year = 2025)
+
+dplyr::tbl(con, "contributions") |>
+  dplyr::filter(transaction_amount >= 1000) |>
+  dplyr::collect()
+
+DBI::dbDisconnect(con)
+```
+
+See the "Working with Large Files via DuckDB" vignette for the full workflow.
+
 ### Combining Datasets
 
 ```{r example-join, eval=FALSE}
 library(freestatemoney)
 library(dplyr)
 
-# Load data from downloaded files
-committees <- md_committees("~/Downloads/Committee_2024.csv")
-contributions <- md_contributions("~/Downloads/Contributions_2024.csv")
+committees <- md_committees(md_download("committees"))
+contributions <- md_contributions(md_download("contributions", year = 2025))
 
 # Join to add committee details to contributions
 contributions_with_details <- contributions %>%
   left_join(
-    committees %>% select(filing_entity_id, committee_type, election),
+    committees %>% select(filing_entity_id, election),
     by = "filing_entity_id"
   )
 
@@ -132,15 +179,15 @@ by_committee_type <- contributions_with_details %>%
 
 ## Key Features
 
+- **Direct downloads**: `md_download()` pulls bulk data straight from the CRIS API
 - **Tidy Data**: All functions return tibbles with clean column names
-- **Type Safety**: Dates are parsed as Date objects, amounts as numeric
-- **Local Files**: Works with CSV files you download from Maryland SBE
-- **Well Documented**: Comprehensive roxygen2 documentation
-- **Tested**: Includes testthat test suite
+- **Type Safety**: Dates are parsed as Date objects, dollar-formatted amounts as numeric
+- **CRIS quirks handled**: The metadata line before the header is skipped (and exposed as the `download_date` attribute), and Excel-armored values like `="21228"` are unwrapped
+- **Wrong-file detection**: Passing a contributions file to `md_committees()` produces a helpful error instead of a broken data frame
 
 ## Column Naming
 
-By default, all functions convert column names to snake_case (e.g., `filing_entity_id`, `transaction_amount`). You can disable this by setting `clean_names = FALSE`:
+By default, all functions convert column names to snake_case (e.g., `filing_entity_id`, `transaction_amount`). You can disable this by setting `clean_names = FALSE`; date and amount columns are still parsed:
 
 ```{r clean-names, eval=FALSE}
 # With clean names (default)
@@ -181,4 +228,5 @@ MIT License - Copyright (c) 2026 NewsAppsUMD
 - Some fields may be nullable/NA depending on the transaction or committee type
 - Lump sum contributions have blank contributor details
 - Independent Expenditure transactions have additional fields for candidate/ballot issue information
-- Date format in source files is MM/DD/YYYY
+- Date format in source files is MM/DD/YYYY; amounts are dollar-formatted (e.g. `$3,000.00`)
+- Each raw file begins with a "... Download as of" metadata line; the parsed timestamp is available as `attr(df, "download_date")`

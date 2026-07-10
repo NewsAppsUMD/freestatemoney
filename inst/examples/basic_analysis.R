@@ -2,9 +2,8 @@
 #
 # This script demonstrates common analysis patterns using the freestatemoney package
 #
-# Prerequisites:
-# 1. Download CSV files from https://campaignfinance.maryland.gov/public/cf/downloads
-# 2. Update the file paths below to match your download locations
+# Data is downloaded directly from the Maryland SBE CRIS API via md_download();
+# you can also pass paths to manually downloaded CSV files.
 
 library(freestatemoney)
 library(dplyr)
@@ -12,10 +11,9 @@ library(ggplot2)
 
 # Load data ---------------------------------------------------------------
 
-# Update these paths to match where you saved the downloaded CSV files
-committees <- md_committees("~/Downloads/Committee_2024.csv")
-contributions <- md_contributions("~/Downloads/Contributions_2024.csv")
-expenditures <- md_expenditures("~/Downloads/Expenditures_2024.csv")
+committees <- md_committees(md_download("committees"))
+contributions <- md_contributions(md_download("contributions", year = 2025))
+expenditures <- md_expenditures(md_download("expenditures", year = 2025))
 
 # Basic exploration -------------------------------------------------------
 

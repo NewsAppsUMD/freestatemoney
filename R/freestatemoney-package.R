@@ -6,6 +6,7 @@
 #'
 #' @section Main Functions:
 #' \itemize{
+#'   \item \code{\link{md_download}}: Download bulk data from the SBE API
 #'   \item \code{\link{md_committees}}: Load committee registration data
 #'   \item \code{\link{md_contributions}}: Load contribution and loan transactions
 #'   \item \code{\link{md_expenditures}}: Load expenditure and IE/EC transactions
@@ -16,13 +17,14 @@
 #' Reporting Information System (CRIS), available at:
 #' https://campaignfinance.maryland.gov/public/cf/downloads
 #'
-#' @docType package
-#' @name freestatemoney-package
-#' @aliases freestatemoney
-#'
-#' @importFrom tibble tibble
-#' @importFrom dplyr mutate rename
-#' @importFrom readr read_csv cols col_character col_date col_double
-#' @importFrom janitor clean_names
-#' @importFrom lubridate mdy
-NULL
+#' @keywords internal
+"_PACKAGE"
+
+# Columns referenced via dplyr non-standard evaluation
+utils::globalVariables(c(
+  "filing_entity_id", "committee_name", "committee_type",
+  "transaction_amount", "transaction_type", "total_raised", "total_spent",
+  "n_contributions", "n_expenditures", "contributor", "contributor_type",
+  "contributor_company_name", "contributor_last_name", "contributor_first_name",
+  "total", "candidate_ballot_issue", "position"
+))

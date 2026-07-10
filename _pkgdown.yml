@@ -1,0 +1,34 @@
+url: https://newsappsumd.github.io/freestatemoney/
+template:
+  bootstrap: 5
+
+home:
+  title: Maryland campaign finance data in R
+
+reference:
+- title: Get data
+  desc: Download bulk data from the Maryland SBE CRIS API
+  contents:
+  - md_download
+  - md_load_all
+- title: Load data
+  desc: Parse downloaded CSV files into tidy tibbles
+  contents:
+  - md_committees
+  - md_contributions
+  - md_expenditures
+- title: Analyze
+  desc: Common reporting questions
+  contents:
+  - md_committee_summary
+  - md_top_contributors
+  - md_independent_expenditures
+- title: Big data
+  desc: DuckDB-backed workflow for large or multi-year files
+  contents:
+  - md_db
+  - md_db_load
+  - md_db_tables
+- title: Package
+  contents:
+  - freestatemoney-package

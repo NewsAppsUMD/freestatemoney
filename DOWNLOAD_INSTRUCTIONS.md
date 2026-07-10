@@ -1,8 +1,34 @@
 # How to Download Maryland Campaign Finance Data
 
-The `freestatemoney` package works with CSV files that you download manually from the Maryland State Board of Elections website. The downloads are triggered by JavaScript, so they cannot be automated directly.
+## Option 1: `md_download()` (recommended)
 
-## Download Steps
+The package can download bulk data directly from the Maryland SBE's CRIS
+API — the same endpoint the website's download buttons use:
+
+```r
+library(freestatemoney)
+
+# Current-cycle committee list
+committees_path <- md_download("committees")
+
+# Contributions or expenditures for a specific filing year
+contributions_path <- md_download("contributions", year = 2025)
+expenditures_path <- md_download("expenditures", year = 2025)
+
+# Feed the paths straight into the loaders
+committees <- md_committees(committees_path)
+```
+
+Notes:
+
+- **File size**: full-cycle contribution and expenditure files can run to
+  hundreds of megabytes. Passing a `year` keeps downloads manageable.
+- **Available years**: the SBE typically offers the most recent several
+  filing years (currently back to 2019). Older years return a "No data"
+  error.
+- **Committees** are only available as one complete file; `year` is ignored.
+
+## Option 2: Manual download
 
 1. **Visit the download page**:
    https://campaignfinance.maryland.gov/public/cf/downloads
@@ -12,54 +38,25 @@ The `freestatemoney` package works with CSV files that you download manually fro
    - **Contributions and Loans**: All contribution transactions
    - **Expenditures**: All spending transactions (includes IE/EC)
 
-3. **Select time period**:
-   - Current year, current cycle (most recent data)
-   - Previous year
-   - Or specific cycles/years as available
+3. **Select time period**: current cycle or a specific filing year
 
 4. **Click the download button** to save the CSV file
 
-5. **Note the file location** (typically `~/Downloads/`)
+5. **Pass the file path** to `md_committees()`, `md_contributions()`, or
+   `md_expenditures()`
 
-## File Naming
+## About the raw files
 
-Files downloaded from the Maryland SBE typically follow naming patterns like:
-- `Committee_2024.csv`
-- `Contributions_2024.csv`
-- `Expenditures_2024.csv`
-
-Or similar variations depending on the cycle/year selected.
-
-## Using the Files
-
-Once downloaded, use the file paths with the package functions:
-
-```r
-library(freestatemoney)
-
-# Load the data from your downloads
-committees <- md_committees("~/Downloads/Committee_2024.csv")
-contributions <- md_contributions("~/Downloads/Contributions_2024.csv")
-expenditures <- md_expenditures("~/Downloads/Expenditures_2024.csv")
-```
-
-## Tips
-
-- **Download all three files** if you plan to link data across datasets using `filing_entity_id`
-- **Check dates**: The download page typically offers current cycle and previous year data
-- **File size**: These files can be large (especially contributions and expenditures)
-- **Keep organized**: Consider creating a dedicated folder for Maryland campaign finance data
-- **Update regularly**: Download fresh files periodically to get the latest filings
+- Each file begins with a metadata line like `Committee Download as of
+  06/14/2026 01:00 AM` before the actual header. The loaders skip it
+  automatically and expose the timestamp as `attr(df, "download_date")`.
+- Values with leading zeros (zip codes) are wrapped for Excel as `="21228"`;
+  the loaders unwrap them.
+- Amounts are dollar-formatted (`$3,000.00`); the loaders parse them as
+  numeric.
 
 ## Data Freshness
 
-The Maryland State Board of Elections updates the downloadable files periodically as new reports are filed. Check the "last modified" date on the download page to see when data was last updated.
-
-## Automation Alternatives
-
-If you need automated downloads, you could:
-1. Use browser automation tools like Selenium to trigger the JavaScript downloads
-2. Check if Maryland SBE offers an API (as of this writing, downloads are JS-triggered)
-3. Set up a scheduled task to manually download and process files
-
-However, for most users, manual downloads work well since the data doesn't change minute-to-minute.
+The Maryland State Board of Elections regenerates the bulk files
+periodically (roughly daily) as new reports are filed. The `download_date`
+attribute tells you exactly when your file was extracted.

@@ -1,0 +1,137 @@
+---
+title: "Working with Large Files via DuckDB"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Working with Large Files via DuckDB}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+has_duckdb <- requireNamespace("duckdb", quietly = TRUE) &&
+  requireNamespace("DBI", quietly = TRUE)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = has_duckdb
+)
+```
+
+Full-cycle CRIS transaction files are large — a single year of contributions
+runs to hundreds of megabytes — and multi-year analyses multiply that. The
+`md_db()` family ingests bulk data into a persistent
+[DuckDB](https://duckdb.org/) database instead of an in-memory tibble: you
+download and parse once, query lazily with dplyr, and only your results ever
+come into R.
+
+These functions need the suggested packages duckdb and DBI
+(`install.packages(c("duckdb", "DBI"))`).
+
+```{r setup}
+library(freestatemoney)
+library(dplyr)
+```
+
+## Building a database
+
+`md_db()` opens (or creates) a database file; `md_db_load()` downloads a
+dataset and ingests it. Different years accumulate; re-ingesting a year
+replaces it, so refreshes are idempotent:
+
+```{r build, eval = FALSE}
+con <- md_db("maryland.duckdb")
+
+md_db_load(con, "committees")
+md_db_load(con, "contributions", year = 2024)
+md_db_load(con, "contributions", year = 2025)
+md_db_load(con, "expenditures", year = 2025)
+```
+
+Because the database file persists, later sessions just reopen it — no
+re-downloading:
+
+```{r reopen, eval = FALSE}
+con <- md_db("maryland.duckdb")
+md_db_tables(con)
+```
+
+For this vignette we build a throwaway database from the sample data shipped
+with the package:
+
+```{r sample-db}
+sample_file <- function(name) {
+  system.file("extdata", name, package = "freestatemoney")
+}
+
+con <- md_db(tempfile(fileext = ".duckdb"))
+md_db_load(con, "committees", file = sample_file("committees_sample.csv"))
+md_db_load(con, "contributions", file = sample_file("contributions_sample.csv"))
+md_db_tables(con)
+```
+
+## Querying with dplyr
+
+`dplyr::tbl()` gives a lazy table: filters, joins, and aggregations compile
+to SQL and run inside DuckDB. Data only enters R when you `collect()`:
+
+```{r query}
+contributions <- tbl(con, "contributions")
+
+contributions |>
+  group_by(contributor_type) |>
+  summarize(
+    total = sum(transaction_amount, na.rm = TRUE),
+    n = n()
+  ) |>
+  arrange(desc(total)) |>
+  collect()
+```
+
+Joins across datasets work the same way, entirely inside the database (the
+two sample files happen to cover different committees, so this join is
+empty here; with real full-year downloads every committee matches):
+
+```{r join}
+tbl(con, "contributions") |>
+  inner_join(
+    tbl(con, "committees") |> select(filing_entity_id, office_sought),
+    by = "filing_entity_id"
+  ) |>
+  count(office_sought) |>
+  collect()
+```
+
+The `filing_year` column added at ingest lets multi-year analyses group by
+year:
+
+```{r by-year, eval = FALSE}
+tbl(con, "contributions") |>
+  group_by(filing_year) |>
+  summarize(total_raised = sum(transaction_amount, na.rm = TRUE)) |>
+  collect()
+```
+
+## Parsing parity with the loaders
+
+Ingestion applies the same treatment as `md_contributions()` and friends:
+the metadata line is skipped, names are cleaned to snake_case, dates and
+dollar amounts are typed, Excel armor is stripped, and CRIS export defects
+(bare line breaks inside fields, Windows-1252 bytes, truncated or over-long
+records) are repaired identically. A query against the database returns the
+same values a tibble would:
+
+```{r parity}
+tbl(con, "contributions") |>
+  select(transaction_date, transaction_amount, contributor_zip_code) |>
+  head(3) |>
+  collect()
+```
+
+## Cleaning up
+
+```{r cleanup}
+DBI::dbDisconnect(con)
+```
+
+The `.duckdb` file remains on disk for next time (delete it like any file if
+you're done with it).

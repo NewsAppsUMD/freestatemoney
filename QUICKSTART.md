@@ -2,29 +2,37 @@
 
 ## Initial Setup
 
-1. **Download data files**:
-   - Visit https://campaignfinance.maryland.gov/public/cf/downloads
-   - Download Committee, Contributions, and/or Expenditures CSV files
-   - Note where files are saved (e.g., `~/Downloads/`)
-
-2. **Install the package**:
+1. **Install the package**:
    ```r
    # Install from GitHub
    devtools::install_github("NewsAppsUMD/freestatemoney")
    ```
 
-3. **Load the library**:
+2. **Load the library**:
    ```r
    library(freestatemoney)
    library(dplyr)  # recommended for data manipulation
    ```
 
-## Three Simple Functions
+3. **Get data** with `md_download()` (or download CSVs manually from
+   https://campaignfinance.maryland.gov/public/cf/downloads — see
+   [DOWNLOAD_INSTRUCTIONS.md](DOWNLOAD_INSTRUCTIONS.md))
 
-### 1. Load Committee Data
+## Four Simple Functions
+
+### 1. Download Data
 
 ```r
-committees <- md_committees("~/Downloads/Committee_2024.csv")
+# Current-cycle committee list; year-specific transaction files
+committees_file <- md_download("committees")
+contributions_file <- md_download("contributions", year = 2025)
+expenditures_file <- md_download("expenditures", year = 2025)
+```
+
+### 2. Load Committee Data
+
+```r
+committees <- md_committees(committees_file)
 ```
 
 Returns information about all registered campaign finance committees including:
@@ -34,10 +42,10 @@ Returns information about all registered campaign finance committees including:
 - Registration dates
 - Contact information
 
-### 2. Load Contributions
+### 3. Load Contributions
 
 ```r
-contributions <- md_contributions("~/Downloads/Contributions_2024.csv")
+contributions <- md_contributions(contributions_file)
 ```
 
 Returns all contribution and loan transactions including:
@@ -47,10 +55,10 @@ Returns all contribution and loan transactions including:
 - To whom (committee information)
 - Payment method
 
-### 3. Load Expenditures
+### 4. Load Expenditures
 
 ```r
-expenditures <- md_expenditures("~/Downloads/Expenditures_2024.csv")
+expenditures <- md_expenditures(expenditures_file)
 ```
 
 Returns all spending transactions including:
@@ -77,8 +85,8 @@ committees %>%
 
 ```r
 # Load the data first
-committees <- md_committees("~/Downloads/Committee_2024.csv")
-contributions <- md_contributions("~/Downloads/Contributions_2024.csv")
+committees <- md_committees(md_download("committees"))
+contributions <- md_contributions(md_download("contributions", year = 2025))
 
 # Get Filing Entity ID from committees table
 committee_id <- "YOUR_COMMITTEE_ID"
@@ -162,7 +170,6 @@ committee_finances <- committees %>%
 
 ### Key Identifiers
 - `filing_entity_id`: Unique committee ID (links all three datasets)
-- `transaction_id`: Unique transaction ID (expenditures only)
 
 ### Key Dates
 - `transaction_date`: When the transaction occurred

@@ -1,0 +1,188 @@
+---
+title: "Analyzing Maryland Campaign Finance Data"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Analyzing Maryland Campaign Finance Data}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.width = 7,
+  fig.height = 4
+)
+```
+
+`freestatemoney` downloads and parses campaign finance data from the Maryland
+State Board of Elections Campaign Reporting Information System (CRIS). This
+vignette walks through the full workflow: getting data, loading it, and
+answering common reporting questions.
+
+```{r setup}
+library(freestatemoney)
+library(dplyr)
+```
+
+## Getting data
+
+`md_download()` fetches bulk CSVs directly from the SBE's API — the same data
+the download page at
+<https://campaignfinance.maryland.gov/public/cf/downloads> serves. Full-cycle
+transaction files can run to hundreds of megabytes, so pass a `year` to limit
+downloads to a single filing year:
+
+```{r download, eval = FALSE}
+committees <- md_committees(md_download("committees"))
+contributions <- md_contributions(md_download("contributions", year = 2025))
+expenditures <- md_expenditures(md_download("expenditures", year = 2025))
+
+# Or all three at once:
+md <- md_load_all(year = 2025)
+```
+
+So this vignette can run anywhere, it uses small samples of real CRIS data
+that ship with the package:
+
+```{r load-samples}
+sample_file <- function(name) {
+  system.file("extdata", name, package = "freestatemoney")
+}
+
+committees <- md_committees(sample_file("committees_sample.csv"))
+contributions <- md_contributions(sample_file("contributions_sample.csv"))
+expenditures <- md_expenditures(sample_file("expenditures_sample.csv"))
+```
+
+## What the loaders handle for you
+
+Raw CRIS files have several quirks that the loaders take care of:
+
+- A metadata line like `Committee Download as of 06/14/2026 01:00 AM`
+  precedes the header. It is skipped, and its timestamp is kept:
+
+```{r download-date}
+attr(committees, "download_date")
+```
+
+- Amounts arrive dollar-formatted (`$3,000.00`) and are parsed as numeric;
+  dates (`MM/DD/YYYY`) become `Date` objects:
+
+```{r types}
+contributions %>%
+  select(transaction_date, transaction_amount) %>%
+  head(3)
+```
+
+- Zip codes arrive wrapped for Excel (`="21228"`) and are unwrapped; files
+  are read with their actual encoding (typically Windows-1252, not UTF-8).
+
+The loaders also refuse to load the wrong dataset — passing a contributions
+file to `md_committees()` produces an error naming the function you wanted.
+
+## Exploring committees
+
+```{r committees}
+committees %>%
+  count(committee_type, sort = TRUE)
+
+committees %>%
+  filter(committee_type == "Candidate Committee") %>%
+  select(committee_name, candidate_last_name, office_sought, party_affiliation) %>%
+  head(5)
+```
+
+## Who gives, and how much?
+
+`md_top_contributors()` aggregates by contributor — organizations by company
+name, individuals as "Last, First" — and ranks by total:
+
+```{r top-contributors}
+top <- md_top_contributors(contributions, n = 10)
+top
+```
+
+```{r top-contributors-plot, fig.alt = "Horizontal bar chart of total contributions by contributor from the package sample data"}
+library(ggplot2)
+
+top %>%
+  mutate(contributor = reorder(contributor, total)) %>%
+  ggplot(aes(x = total, y = contributor)) +
+  geom_col(fill = "#4666DE", width = 0.7) +
+  scale_x_continuous(labels = scales::dollar) +
+  labs(
+    title = "Total contributions by contributor",
+    subtitle = "Package sample data",
+    x = NULL, y = NULL
+  ) +
+  theme_minimal() +
+  theme(panel.grid.major.y = element_blank())
+```
+
+With a full year of data, the same call surfaces the largest donors in the
+state.
+
+## Following the spending
+
+```{r spending}
+expenditures %>%
+  group_by(category) %>%
+  summarize(
+    total = sum(transaction_amount, na.rm = TRUE),
+    n = n()
+  ) %>%
+  arrange(desc(total))
+```
+
+Independent expenditures and electioneering communications — spending *about*
+candidates rather than *by* them — get their own summary. CRIS labels these
+with combined transaction types, so `md_independent_expenditures()` matches
+by pattern:
+
+```{r ie}
+md_independent_expenditures(expenditures)
+```
+
+## Committee-level totals
+
+`md_committee_summary()` joins all three datasets on `filing_entity_id` and
+totals each committee's fundraising and spending. Outstanding obligations
+(unpaid debts) are excluded from spending, and committees with no
+transactions get zeros:
+
+```{r summary}
+md_committee_summary(committees, contributions, expenditures) %>%
+  head(5)
+```
+
+Note that the sample files cover different committees, so totals here are
+mostly zero; with real full-year downloads every active committee is
+represented. `net_raised` reflects only the transactions in the data you
+loaded — it is not the committee's official cash balance.
+
+## Linking datasets yourself
+
+`filing_entity_id` links all three datasets, so any join works:
+
+```{r join, eval = FALSE}
+contributions %>%
+  left_join(
+    committees %>% select(filing_entity_id, office_sought, party_affiliation),
+    by = "filing_entity_id"
+  ) %>%
+  group_by(party_affiliation) %>%
+  summarize(total_raised = sum(transaction_amount, na.rm = TRUE))
+```
+
+## Data notes
+
+- **Lump-sum contributions** have blank contributor details; they are dropped
+  by `md_top_contributors()` but present in the raw data.
+- **Aggregate As Of Download Date** gives each contributor's running total to
+  that committee as of the file's extraction date.
+- Contributor names are as reported: the same person may appear under
+  multiple spellings.
+- The SBE regenerates bulk files roughly daily; check
+  `attr(df, "download_date")` for your file's extraction time.
